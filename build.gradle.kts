@@ -5,7 +5,7 @@ plugins {
 }
 
 group = "net.democracycraft"
-version = "1.0.14"
+version = "1.0.15"
 
 repositories {
     mavenCentral()
@@ -18,8 +18,9 @@ repositories {
 dependencies {
     val democracyLibVersion = "5891d074b3"
     val democracyLib = "com.github.MCCitiesNetwork:DemocracyLib:$democracyLibVersion"
-    compileOnly("io.papermc.paper:paper-api:1.21.11-R0.1-SNAPSHOT")
-    compileOnly("net.kyori:adventure-text-minimessage:4.26.1")
+    compileOnly("io.papermc.paper:paper-api:1.21.8-R0.1-SNAPSHOT")
+    compileOnly("net.kyori:adventure-text-minimessage:4.17.0")
+    compileOnly("com.github.plan-player-analytics:Plan:5.6.2965")
     implementation(democracyLib)
 }
 

@@ -76,7 +76,9 @@ public record PollInteractListener(ElectionsService electionsService, Elections 
             if (minMinutes > 0) {
                 long playedMinutes = PlayerPlaytimeUtil.getPlaytimeMinutes(player);
                 if (playedMinutes < minMinutes) {
-                    player.sendMessage("You are not eligible to vote: requires at least " + minMinutes + " minutes of active playtime.");
+                    String requiredTime = formatPlaytime(minMinutes);
+                    String currentTime = formatPlaytime(playedMinutes);
+                    player.sendMessage("You are not eligible to vote: requires at least " + requiredTime + " of active playtime. You have " + currentTime + ".");
                     return;
                 }
             }
@@ -121,5 +123,21 @@ public record PollInteractListener(ElectionsService electionsService, Elections 
             }
         }
         return Optional.empty();
+    }
+
+    /**
+     * Formats playtime minutes into a human-readable string.
+     * Shows hours if >= 60 minutes, otherwise shows minutes.
+     */
+    private String formatPlaytime(long minutes) {
+        if (minutes >= 60) {
+            long hours = minutes / 60;
+            long remainingMinutes = minutes % 60;
+            if (remainingMinutes == 0) {
+                return hours + " hour" + (hours != 1 ? "s" : "");
+            }
+            return hours + "h " + remainingMinutes + "m";
+        }
+        return minutes + " minute" + (minutes != 1 ? "s" : "");
     }
 }

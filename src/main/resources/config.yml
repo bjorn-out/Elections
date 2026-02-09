@@ -10,3 +10,4 @@ elections:
   autoCloseSweepSeconds: 60
   deletedPurgeSweepSeconds: 3600
   deletedRetentionDays: 30
+  playtimeLookbackDays: 30
