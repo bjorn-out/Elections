@@ -1,7 +1,6 @@
 package net.democracycraft.elections.internal.ui.manager;
 
 import io.papermc.paper.dialog.Dialog;
-import io.papermc.paper.registry.data.dialog.DialogBase;
 import io.papermc.paper.registry.data.dialog.body.DialogBody;
 import io.papermc.paper.registry.data.dialog.input.DialogInput;
 import net.democracycraft.elections.Elections;
@@ -49,6 +48,7 @@ public class CandidateEditMenu extends ChildMenuImp {
         public String deletedMsg = "<green>Candidate deleted.</green>";
         public String deleteFailed = "<red>Could not delete candidate.</red>";
         public String updatedMsg = "<green>Candidate updated.</green>";
+        public String updateFailed = "<red>Could not update candidate. The name may already be in use.</red>";
         public String emptyError = "<red>Value cannot be empty.</red>";
 
         public String loadingTitleSave = "<gold><bold>Saving</bold></gold>";
@@ -161,12 +161,17 @@ public class CandidateEditMenu extends ChildMenuImp {
         new BukkitRunnable() {
             @Override
             public void run() {
-                electionsService.updateCandidate(electionId, candidateId, name, party, player.getName());
+                Optional<Candidate> result = electionsService.updateCandidate(electionId, candidateId, name, party, player.getName());
                 new BukkitRunnable() {
                     @Override
                     public void run() {
-                        player.sendMessage(miniMessage(config.updatedMsg, placeholders));
-                        open();
+                        if (result.isPresent()) {
+                            player.sendMessage(miniMessage(config.updatedMsg, placeholders));
+                            new CandidateListMenu(player, getParentMenu(), electionsService, electionId).open();
+                        } else {
+                            player.sendMessage(miniMessage(config.updateFailed, placeholders));
+                            open();
+                        }
                     }
                 }.runTask(Elections.getInstance());
             }

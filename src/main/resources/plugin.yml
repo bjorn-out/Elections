@@ -3,6 +3,7 @@ version: '${version}'
 main: net.democracycraft.elections.Elections
 api-version: '1.21'
 authors: [ Alepando ]
+softdepend: [Plan]
 commands:
   elections:
     description: Elections commands (manager UI, export data)

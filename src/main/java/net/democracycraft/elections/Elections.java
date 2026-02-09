@@ -25,6 +25,7 @@ import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitTask;
 import net.democracycraft.elections.internal.util.config.ConfigPaths;
 import net.democracycraft.elections.internal.util.export.local.queue.LocalExportedElectionQueue;
+import net.democracycraft.elections.internal.util.time.PlayerPlaytimeUtil;
 import org.jetbrains.annotations.NotNull;
 
 /**
@@ -195,6 +196,7 @@ public class Elections extends JavaPlugin {
     }
 
     private void loadConfig() {
+        PlayerPlaytimeUtil.reloadConfig();
         GitHubGistClient.loadConfig();
         ErrorMenu.Config.loadConfig();
         LoadingMenu.Config.loadConfig();
@@ -207,6 +209,7 @@ public class Elections extends JavaPlugin {
         ElectionCreateWizard.Config.loadConfig();
         BallotModeMenu.Config.loadConfig();
         CandidatesAddMenu.Config.loadConfig();
+        CandidateEditMenu.Config.loadConfig();
         DurationMenu.Config.loadConfig();
         ElectionListMenu.Config.loadConfig();
         ElectionManagerMenu.Config.loadConfig();
@@ -216,6 +219,7 @@ public class Elections extends JavaPlugin {
         TitleEditMenu.Config.loadConfig();
         BallotIntroMenu.Config.loadConfig();
         CandidateListMenu.Config.loadConfig();
+        CandidateVoteListMenu.Config.loadConfig();
         CandidateVoteMenu.Config.loadConfig();
         PreferentialBallotMenu.Config.loadConfig();
         SimpleBlockBallotMenu.Config.loadConfig();

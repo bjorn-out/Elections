@@ -4,6 +4,7 @@ public enum ConfigPaths {
     AUTO_CLOSE_SWEEP_SECONDS("elections.autoCloseSweepSeconds"),
     DELETED_PURGE_SWEEP_SECONDS("elections.deletedPurgeSweepSeconds"),
     DELETED_RETENTION_DAYS("elections.deletedRetentionDays"),
+    PLAYTIME_LOOKBACK_DAYS("elections.playtimeLookbackDays"),
     MYSQL_HOST("mysql.host"),
     MYSQL_PORT("mysql.port"),
     MYSQL_DATABASE("mysql.database"),
