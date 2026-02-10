@@ -8,6 +8,7 @@ import net.democracycraft.elections.api.service.ElectionsService;
 import net.democracycraft.elections.internal.data.ElectionStatus;
 import net.democracycraft.elections.internal.data.RequirementsDto;
 import net.democracycraft.elections.internal.ui.vote.BallotIntroMenu;
+import net.democracycraft.elections.internal.util.text.MiniMessageUtil;
 import net.democracycraft.elections.internal.util.time.PlayerPlaytimeUtil;
 import net.democracycraft.elections.internal.vote.VoteSessionManager;
 import org.bukkit.Location;
@@ -51,13 +52,13 @@ public record PollInteractListener(ElectionsService electionsService, Elections 
 
         Election election = match.get();
         if (election.getStatus() != ElectionStatus.OPEN) {
-            player.sendMessage("This election is not open.");
+            player.sendMessage(MiniMessageUtil.parseOrPlain("<red>This election is not open."));
             return;
         }
 
         // Minimal eligibility: require elections.user and any configured permission nodes
         if (!player.hasPermission("elections.user")) {
-            player.sendMessage("You don't have permission to vote.");
+            player.sendMessage(MiniMessageUtil.parseOrPlain("<red>You don't have permission to vote."));
             return;
         }
         RequirementsDto req = election.getRequirements();
@@ -65,7 +66,7 @@ public record PollInteractListener(ElectionsService electionsService, Elections 
             for (String node : req.permissions()) {
                 if (node == null || node.isBlank()) continue;
                 if (!player.hasPermission(node)) {
-                    player.sendMessage("You are not eligible to vote in this election.");
+                    player.sendMessage(MiniMessageUtil.parseOrPlain("<red>You are not eligible to vote in this election."));
                     return;
                 }
             }
@@ -74,16 +75,43 @@ public record PollInteractListener(ElectionsService electionsService, Elections 
         if (req != null) {
             long minMinutes = req.minActivePlaytimeMinutes();
             if (minMinutes > 0) {
-                long playedMinutes = PlayerPlaytimeUtil.getPlaytimeMinutes(player);
-                if (playedMinutes < minMinutes) {
-                    String requiredTime = formatPlaytime(minMinutes);
-                    String currentTime = formatPlaytime(playedMinutes);
-                    player.sendMessage("You are not eligible to vote: requires at least " + requiredTime + " of active playtime. You have " + currentTime + ".");
-                    return;
-                }
+                // Fetch playtime asynchronously then continue eligibility check
+                PlayerPlaytimeUtil.getPlaytimeMinutes(player)
+                    .whenComplete((playedMinutes, throwable) -> {
+                        // Handle any errors during playtime fetch
+                        if (throwable != null) {
+                            Elections.getInstance().getLogger().warning("Failed to fetch playtime for " + player.getName() + ": " + throwable.getMessage());
+                            player.sendMessage(MiniMessageUtil.parseOrPlain("<red>An error occurred while checking your playtime. Please try again."));
+                            return;
+                        }
+
+                        // Run the validation and UI on the main thread
+                        new BukkitRunnable() {
+                            @Override
+                            public void run() {
+                                if (playedMinutes < minMinutes) {
+                                    String requiredTime = formatPlaytime(minMinutes);
+                                    String currentTime = formatPlaytime(playedMinutes);
+                                    player.sendMessage(MiniMessageUtil.parseOrPlain("<red>You are not eligible to vote:</red> <gray>requires at least <white>" + requiredTime + "</white> of active playtime. You have <white>" + currentTime + "</white>.</gray>"));
+                                    return;
+                                }
+                                // Player meets playtime requirement, proceed with vote registration
+                                proceedWithVote(player, election);
+                            }
+                        }.runTask(Elections.getInstance());
+                    });
+                return;
             }
         }
 
+        // No playtime requirement or minMinutes <= 0, proceed directly
+        proceedWithVote(player, election);
+    }
+
+    /**
+     * Registers the voter and opens the ballot UI after eligibility checks pass.
+     */
+    private void proceedWithVote(Player player, Election election) {
         // Register voter off the main thread to avoid DB blocking.
         new BukkitRunnable() {
             @Override
@@ -96,7 +124,7 @@ public record PollInteractListener(ElectionsService electionsService, Elections 
                         Election latest = electionsService.getElectionSnapshot(election.getId()).orElse(election);
                         boolean alreadySubmitted = latest.getBallots().stream().anyMatch(b -> b.getVoterId() == voter.getId() && b.isSubmitted());
                         if (alreadySubmitted) {
-                            player.sendMessage("You have already submitted a ballot for this election.");
+                            player.sendMessage(MiniMessageUtil.parseOrPlain("<red>You have already submitted a ballot for this election."));
                             return;
                         }
                         VoteSessionManager.open(player.getUniqueId(), election.getId(), voter.getId(), latest.getSystem());

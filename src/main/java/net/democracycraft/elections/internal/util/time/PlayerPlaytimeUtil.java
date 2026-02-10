@@ -4,10 +4,14 @@ import com.djrapitops.plan.query.CommonQueries;
 import com.djrapitops.plan.query.QueryService;
 import net.democracycraft.elections.Elections;
 import net.democracycraft.elections.internal.util.config.ConfigPaths;
+import org.bukkit.Bukkit;
 import org.bukkit.Statistic;
 import org.bukkit.entity.Player;
+import org.jspecify.annotations.NonNull;
 
+import java.sql.ResultSet;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -64,44 +68,56 @@ public final class PlayerPlaytimeUtil {
      *
      * @param player The player to query.
      * @param days   The number of days to look back (e.g., 30 for the last month).
-     * @return Playtime in milliseconds.
+     * @return CompletableFuture with playtime in milliseconds.
      */
-    public static long getPlaytimeMillis(Player player, int days) {
-        if (player == null) return 0L;
+    public static CompletableFuture<Long> getPlaytimeMillis(Player player, int days) {
+        if (player == null) return CompletableFuture.completedFuture(0L);
 
-        // Use Plan API as the authoritative source
-        try {
-            QueryService service = QueryService.getInstance();
-            CommonQueries queries = service.getCommonQueries();
+        return CompletableFuture.supplyAsync(() -> {
+            // Use Plan API as the authoritative source
+            try {
+                QueryService service = QueryService.getInstance();
+                CommonQueries queries = service.getCommonQueries();
 
-            if (queries != null) {
-                long now = System.currentTimeMillis();
-                long lookBackMillis = TimeUnit.DAYS.toMillis(days);
-                long start = now - lookBackMillis;
+                if (queries != null) {
+                    long now = System.currentTimeMillis();
+                    long lookBackMillis = TimeUnit.DAYS.toMillis(days);
+                    long start = now - lookBackMillis;
 
-                UUID playerUniqueIdentifier = player.getUniqueId();
+                    UUID playerUniqueIdentifier = player.getUniqueId();
 
-                UUID serverUUID = service.getServerUUID().orElse(null);
+                    String sql = "SELECT SUM((s.session_end - s.session_start) - s.afk_time) " +
+                            "FROM plan_sessions s " +
+                            "JOIN plan_users u ON s.user_id = u.id " +
+                            "WHERE u.uuid = ? AND s.session_start >= ?";
 
-                long history = queries.fetchPlaytime(playerUniqueIdentifier, serverUUID, start, now);
+                    long history = service.query(sql, preparedStatement -> {
+                                preparedStatement.setString(1, playerUniqueIdentifier.toString());
+                                preparedStatement.setLong(2, start);
+                                try (ResultSet resultSet = preparedStatement.executeQuery()) {
+                                    if (resultSet.next()) {
+                                        return resultSet.getLong(1);
+                                    }
+                                    return 0L;
+                                }
+                            }
+                    );
 
-                long current = queries.fetchCurrentSessionPlaytime(playerUniqueIdentifier);
+                    long current = queries.fetchCurrentSessionPlaytime(playerUniqueIdentifier);
 
-                return history + current;
+                    return history + current;
+                }
+            } catch (Exception ignored) {
+                // Plan is unavailable or query failed; will fallback to Bukkit's
             }
-        } catch (Exception ignored) {
-            // Plan not available, fall through to Bukkit fallback
-        }
 
-        // Fallback to Bukkit ONLY if Plan is completely unavailable
-        // This is less secure as it doesn't track active playtime accurately
-        return getBukkitPlaytimeMillis(player);
+            // Fallback to Bukkit ONLY if Plan is completely unavailable
+            return getBukkitPlaytimeMillis(player);
+        });
     }
 
     /**
      * Gets the player's total playtime from Bukkit statistics in milliseconds.
-     * WARNING: This is only used as a fallback when Plan is unavailable.
-     * Bukkit stats can be manipulated and don't accurately reflect active playtime.
      */
     private static long getBukkitPlaytimeMillis(Player player) {
         try {
@@ -117,52 +133,52 @@ public final class PlayerPlaytimeUtil {
     /**
      * Returns the player's playtime in seconds for the configured lookback period.
      * @param player the player to get playtime for
-     * @return playtime in seconds
+     * @return CompletableFuture with playtime in seconds
      */
-    public static long getPlaytimeSeconds(Player player) {
+    public static @NonNull CompletableFuture<Long> getPlaytimeSeconds(Player player) {
         return getPlaytimeSeconds(player, getConfiguredLookbackDays());
     }
 
-    public static long getPlaytimeSeconds(Player player, int days) {
-        return TimeUnit.MILLISECONDS.toSeconds(getPlaytimeMillis(player, days));
+    public static @NonNull CompletableFuture<Long> getPlaytimeSeconds(Player player, int days) {
+        return getPlaytimeMillis(player, days).thenApply(TimeUnit.MILLISECONDS::toSeconds);
     }
 
     /**
      * Returns the player's playtime in minutes for the configured lookback period.
      * @param player the player to get playtime for
-     * @return playtime in minutes
+     * @return CompletableFuture with playtime in minutes
      */
-    public static long getPlaytimeMinutes(Player player) {
+    public static @NonNull CompletableFuture<Long> getPlaytimeMinutes(Player player) {
         return getPlaytimeMinutes(player, getConfiguredLookbackDays());
     }
 
-    public static long getPlaytimeMinutes(Player player, int days) {
-        return TimeUnit.MILLISECONDS.toMinutes(getPlaytimeMillis(player, days));
+    public static @NonNull CompletableFuture<Long> getPlaytimeMinutes(@NonNull Player player, int days) {
+        return getPlaytimeMillis(player, days).thenApply(TimeUnit.MILLISECONDS::toMinutes);
     }
 
     /**
      * Returns the player's playtime in hours for the configured lookback period.
      * @param player the player to get playtime for
-     * @return playtime in hours
+     * @return CompletableFuture with playtime in hours
      */
-    public static long getPlaytimeHours(Player player) {
+    public static @NonNull CompletableFuture<Long> getPlaytimeHours(Player player) {
         return getPlaytimeHours(player, getConfiguredLookbackDays());
     }
 
-    public static long getPlaytimeHours(Player player, int days) {
-        return TimeUnit.MILLISECONDS.toHours(getPlaytimeMillis(player, days));
+    public static @NonNull CompletableFuture<Long> getPlaytimeHours(Player player, int days) {
+        return getPlaytimeMillis(player, days).thenApply(TimeUnit.MILLISECONDS::toHours);
     }
 
     /**
      * Returns the player's playtime in days for the configured lookback period.
      * @param player the player to get playtime for
-     * @return playtime in days
+     * @return CompletableFuture with playtime in days
      */
-    public static long getPlaytimeDays(Player player) {
+    public static CompletableFuture<Long> getPlaytimeDays(Player player) {
         return getPlaytimeDays(player, getConfiguredLookbackDays());
     }
 
-    public static long getPlaytimeDays(Player player, int days) {
-        return TimeUnit.MILLISECONDS.toDays(getPlaytimeMillis(player, days));
+    public static CompletableFuture<Long> getPlaytimeDays(Player player, int days) {
+        return getPlaytimeMillis(player, days).thenApply(TimeUnit.MILLISECONDS::toDays);
     }
 }
