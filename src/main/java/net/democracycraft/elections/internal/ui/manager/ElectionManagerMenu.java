@@ -232,10 +232,10 @@ public class ElectionManagerMenu extends ParentMenuImp {
         builder.button(miniMessage(config.candidatesBtn, placeholders), context -> new CandidatesAddMenu(context.player(), this, electionService, electionId).open());
         builder.button(miniMessage(config.requirementsBtn, placeholders), context -> new RequirementsMenu(context.player(), this, electionService, electionId).open());
 
-        // Delete with double confirmation (requires manager permission); hidden for DELETED elections
+        // Delete with double confirmation (requires manager and delete permission); hidden for DELETED elections
         if (election.getStatus() != net.democracycraft.elections.internal.data.ElectionStatus.DELETED) {
             builder.button(miniMessage(config.deleteBtn, placeholders), context -> {
-                if (!context.player().hasPermission("elections.manager") && !context.player().hasPermission("elections.admin")) {
+                if ((!context.player().hasPermission("elections.manager") || !context.player().hasPermission("elections.delete")) && !context.player().hasPermission("elections.admin")) {
                     context.player().sendMessage(miniMessage(config.permissionDeniedMsg));
                     return;
                 }
