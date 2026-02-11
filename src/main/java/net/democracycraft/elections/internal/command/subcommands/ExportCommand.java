@@ -421,8 +421,7 @@ public class ExportCommand implements Subcommand {
     private void executeDelete(CommandContext context, ExportMessagesConfig messages) {
         Elections plugin = context.plugin();
 
-        if (!context.sender().hasPermission("elections.manager") &&
-            !context.sender().hasPermission("elections.delete") &&
+        if (!context.sender().hasPermission("elections.delete") &&
             !context.sender().hasPermission("elections.admin")) {
             Component msg = MiniMessageUtil.parseOrPlain(messages.errorNoPermission);
             context.sender().sendMessage(msg);
