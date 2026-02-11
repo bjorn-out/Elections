@@ -31,7 +31,7 @@ Quick tip: the base command is `/elections` (alias: `/democracyelections`).
 - `elections.permissions.reload` (default: op)
   - Allows `/elections reloadperms`.
 - `elections.delete` (default: op)
-  - Extra gate for delete operations (used by `/elections export delete`). Managers/Admins can also delete.
+  - Extra gate for delete operations (used by `/elections export delete` and election deletion). Admins can also delete.
 - `elections.admin` (default: op)
   - Admin umbrella. Inherits all Elections permissions (including `elections.command`).
 - `elections.user` (default: true)
